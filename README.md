@@ -7,6 +7,7 @@ package main
 
 import (
 	"database/sql"
+	"flag"
 	"fmt"
 	"os"
 
@@ -14,17 +15,32 @@ import (
 	"github.com/jamf/go-mysqldump"
 )
 
+type Options struct {
+	User      string
+	Passwd    string
+	Host      string
+	DBName    string
+	Net       string
+	ParseTime bool
+	Charset   string
+}
+
 func main() {
+
+	opt := ParseOptions()
+
 	// Open connection to database
 	config := mysql.NewConfig()
-	config.User = "your-user"
-	config.Passwd = "your-pw"
-	config.DBName = "your-db"
-	config.Net = "tcp"
-	config.Addr = "your-hostname:your-port"
+	config.User = opt.User
+	config.Passwd = opt.Passwd
+	config.DBName = opt.DBName
+	config.Net = opt.Net
+	config.Addr = opt.Host
+	config.ParseTime = opt.ParseTime
+	config.Collation = opt.Charset
 
 	dumpDir := "dumps"
-	dumpFilenameFormat := fmt.Sprintf("%s-20060102T150405", config.DBName) // accepts time layout string and add .sql at the end of file
+	dumpFilenameFormat := fmt.Sprintf("%s-20060102_1504", config.DBName) // accepts time layout string and add .sql at the end of file
 
 	if err := os.MkdirAll(dumpDir, 0755); err != nil {
 		fmt.Println("Error mkdir:", err)
@@ -58,6 +74,34 @@ func main() {
 	// Close dumper, connected database and file stream.
 	dumper.Close()
 }
+
+func ParseOptions() *Options {
+	opt := &Options{}
+	flag.StringVar(&opt.Host, "host", "127.0.0.1:3306", "Host")
+	flag.StringVar(&opt.Net, "net", "tcp", "Net")
+	flag.BoolVar(&opt.ParseTime, "parseTime", true, "ParseTime")
+	flag.StringVar(&opt.Charset, "charset", "utf8mb4_unicode_ci", "Charset")
+	flag.StringVar(&opt.User, "user", "root", "User")
+	flag.StringVar(&opt.Passwd, "pass", "", "Password")
+	flag.StringVar(&opt.DBName, "db", "test", "Database")
+
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "------------------------------------------------------------")
+		fmt.Fprintln(os.Stderr, "Usage:")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExample: %s -host=127.0.0.1:3306 -user=root -pass=root -db=test\n", os.Args[0])
+		fmt.Fprintln(os.Stderr, "------------------------------------------------------------")
+	}
+
+	if len(os.Args) == 1 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	flag.Parse()
+	return opt
+}
+
 ```
 
 [![GoDoc](https://godoc.org/github.com/jamf/go-mysqldump?status.svg)](https://godoc.org/github.com/jamf/go-mysqldump)
